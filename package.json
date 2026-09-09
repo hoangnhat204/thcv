@@ -1,0 +1,14 @@
+{
+  "name": "truong-hoc-cau-vong",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Trường học Cầu Vồng — dành cho tất cả mọi người",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.mjs",
+    "start": "node server.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
