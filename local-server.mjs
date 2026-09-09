@@ -1,4 +1,4 @@
-import http from 'node:http';
+import http from 'node:http'; // Local development server; Vercel serves the static files directly.
 import { createReadStream } from 'node:fs';
 import { realpath, stat } from 'node:fs/promises';
 import path from 'node:path';

@@ -5,8 +5,8 @@
   "description": "Trường học Cầu Vồng — dành cho tất cả mọi người",
   "type": "module",
   "scripts": {
-    "dev": "node server.mjs",
-    "start": "node server.mjs"
+    "dev": "node local-server.mjs",
+    "start": "node local-server.mjs"
   },
   "engines": {
     "node": ">=18"
