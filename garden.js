@@ -109,7 +109,18 @@ export function createGarden({ container, onChange = () => {}, onBack = () => {}
       if (savingAvailable) notify('Trình duyệt chưa cho phép lưu. Khu vườn sẽ được giữ trong phiên này.');
       savingAvailable = false;
     }
+    syncRemote();
     onChange();
+  }
+
+  async function syncRemote() {
+    try {
+      const plants = Object.entries(state.gardens).flatMap(([roomId, plots]) => plots.map((plant, index) => plant ? { ...plant, roomId, index } : null).filter(Boolean));
+      const response = await fetch('/api/plants', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plants }) });
+      if (!response.ok) throw new Error('Không thể đồng bộ khu vườn.');
+    } catch {
+      // Local storage remains the source of truth when the database is unavailable.
+    }
   }
 
   function getStats() {
@@ -280,6 +291,32 @@ export function createGarden({ container, onChange = () => {}, onBack = () => {}
   });
 
   return {
+    async loadRemote() {
+      try {
+        const response = await fetch('/api/plants');
+        if (!response.ok) throw new Error('Không thể tải khu vườn.');
+        const payload = await response.json();
+        const remote = Object.create(null);
+        for (const plant of payload.plants || []) {
+          if (!remote[plant.room_id]) remote[plant.room_id] = [];
+          remote[plant.room_id][plant.plot_index] = {
+            flower: plant.flower_id,
+            stage: Number(plant.stage),
+            plantedAt: new Date(plant.planted_at).getTime(),
+            grower: { name: plant.grower_name || '', school: plant.grower_school || '', message: plant.grower_message || '' },
+          };
+        }
+        Object.entries(remote).forEach(([roomId, plots]) => {
+          const length = Math.max(PLOTS_PER_BED, Math.ceil(plots.length / PLOTS_PER_BED) * PLOTS_PER_BED);
+          state.gardens[roomId] = Array.from({ length }, (_, index) => plots[index] || null);
+        });
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        Object.entries(state.gardens).forEach(([roomId, plots]) => plots.forEach((plant, index) => scheduleGrowth(roomId, index)));
+        onChange();
+      } catch {
+        // A local-only deployment continues to work without Neon.
+      }
+    },
     open(nextRoom) {
       room = nextRoom;
       if (!state.gardens[room.id]) { state.gardens[room.id] = Array(PLOTS_PER_BED).fill(null); save(); }

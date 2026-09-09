@@ -24,8 +24,21 @@ function readPlants() {
     return [];
   }
 }
-function render() {
-  plants = readPlants();
+async function loadRemotePlants() {
+  const response = await fetch('/api/plants');
+  if (!response.ok) throw new Error('Không thể tải dữ liệu Neon.');
+  const payload = await response.json();
+  return (payload.plants || []).map(plant => ({
+    roomId: plant.room_id,
+    index: plant.plot_index,
+    flower: plant.flower_id,
+    stage: Number(plant.stage),
+    plantedAt: new Date(plant.planted_at).getTime(),
+    grower: { name: plant.grower_name, school: plant.grower_school, message: plant.grower_message },
+  }));
+}
+async function render() {
+  try { plants = await loadRemotePlants(); } catch { plants = readPlants(); }
   const bloomed = plants.filter(plant => plant.stage === 5).length;
   const schools = new Set(plants.map(plant => plant.grower?.school).filter(Boolean)).size;
   document.getElementById('summary').innerHTML = [['🌱',plants.length,'Cây đã gieo'],['🌸',bloomed,'Hoa đã nở'],['🏫',new Set(plants.map(plant => plant.roomId)).size,'Khu vườn'],['📚',schools,'Trường tham gia']].map(item => `<div class="summary-card"><strong>${item[0]} ${item[1]}</strong><span>${item[2]}</span></div>`).join('');
@@ -40,8 +53,12 @@ function readBooks() {
     return [];
   }
 }
-function renderBooks() {
+async function renderBooks() {
   books = readBooks();
+  try {
+    const response = await fetch('/api/books');
+    if (response.ok) books = (await response.json()).books || books;
+  } catch {}
   const list = document.getElementById('books-list');
   list.innerHTML = books.length ? books.map(book => `<div class="book-row"><span>📖</span><strong>${escapeHtml(book.title)}</strong><small>${new Date(book.uploadedAt).toLocaleString('vi-VN')}</small><button type="button" data-delete-book="${escapeHtml(book.id)}">Xóa</button></div>`).join('') : '<p class="empty">Chưa có sách nào.</p>';
 }
@@ -85,15 +102,17 @@ document.getElementById('book-form').addEventListener('submit', async event => {
       error.textContent = 'Tệp này không phải văn bản có thể đọc trực tiếp. Hãy chọn .txt, .md, .csv hoặc .json.';
       return;
     }
-    books = [...readBooks(), {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    const newBook = {
       title: String(form.elements.title.value).trim() || file.name,
       fileName: file.name,
       mimeType: file.type,
       binary,
       content,
       uploadedAt: Date.now(),
-    }];
+    };
+    const response = await fetch('/api/books', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newBook) });
+    if (!response.ok) throw new Error('Không thể lưu sách vào Neon.');
+    books = [((await response.json()).book), ...readBooks()];
     localStorage.setItem(LIBRARY_KEY, JSON.stringify(books));
     form.reset();
     error.textContent = '';
@@ -105,8 +124,9 @@ document.getElementById('book-form').addEventListener('submit', async event => {
 document.addEventListener('click', event => {
   const button = event.target.closest('[data-delete-book]');
   if (!button) return;
-  books = readBooks().filter(book => book.id !== button.dataset.deleteBook);
-  localStorage.setItem(LIBRARY_KEY, JSON.stringify(books));
-  renderBooks();
+  fetch(`/api/books?id=${encodeURIComponent(button.dataset.deleteBook)}`, { method: 'DELETE' })
+    .then(response => { if (!response.ok) throw new Error('Không thể xóa sách.'); })
+    .then(() => { books = readBooks().filter(book => book.id !== button.dataset.deleteBook); localStorage.setItem(LIBRARY_KEY, JSON.stringify(books)); renderBooks(); })
+    .catch(() => { document.getElementById('book-error').textContent = 'Không thể xóa sách khỏi Neon.'; });
 });
 if (sessionStorage.getItem('thcv-admin-auth') === '1') { loginView.classList.add('hidden'); dashboardView.classList.remove('hidden'); render(); }

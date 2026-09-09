@@ -73,9 +73,10 @@ const garden = createGarden({
   notify,
   icons: icon,
 });
+garden.loadRemote();
 
 const LIBRARY_KEY = 'thcv-library-v1';
-function showLibrary() {
+async function showLibrary() {
   let books = [];
   try {
     const saved = JSON.parse(localStorage.getItem(LIBRARY_KEY) || '[]');
@@ -86,7 +87,17 @@ function showLibrary() {
   }
   const old = document.querySelector('.library-modal');
   if (old) old.remove();
-  document.body.insertAdjacentHTML('beforeend', `<div class="library-modal" role="dialog" aria-modal="true"><div class="library-card"><span class="library-decor library-decor-left">🌿🌸🌼</span><span class="library-decor library-decor-right">🌺🍃🌻</span><button class="library-close" type="button" aria-label="Đóng">×</button><section class="library-shelf-view"><p class="garden-eyebrow">PHÒNG THƯ VIỆN</p><h2>Tủ sách</h2><div class="library-books">${books.length ? books.map((book, index) => `<button class="library-book" data-book-id="${escapeHtml(book.id)}"><span class="book-cover"><i></i></span><strong>${index + 1}</strong><small>${escapeHtml(book.title)}</small></button>`).join('') : '<p class="library-empty">Thư viện chưa có sách.</p>'}</div></section><article class="library-reader hidden" id="library-reader"><button class="library-back" type="button">← Về tủ sách</button><div class="paper-book"><div class="paper-page paper-page-left"><span class="page-number"></span><h3></h3><pre></pre></div><div class="paper-page paper-page-right"><span class="page-number"></span><pre></pre></div></div><div class="book-controls"><button type="button" data-page="prev" aria-label="Trang trước">←</button><span class="page-indicator"></span><button type="button" data-page="next" aria-label="Trang sau">→</button></div></article></div></div>`);
+  const renderLibrary = currentBooks => document.body.insertAdjacentHTML('beforeend', `<div class="library-modal" role="dialog" aria-modal="true"><div class="library-card"><span class="library-decor library-decor-left">🌿🌸🌼</span><span class="library-decor library-decor-right">🌺🍃🌻</span><button class="library-close" type="button" aria-label="Đóng">×</button><section class="library-shelf-view"><p class="garden-eyebrow">PHÒNG THƯ VIỆN</p><h2>Tủ sách</h2><div class="library-books">${currentBooks.length ? currentBooks.map((book, index) => `<button class="library-book" data-book-id="${escapeHtml(book.id)}"><span class="book-cover"><i></i></span><strong>${index + 1}</strong><small>${escapeHtml(book.title)}</small></button>`).join('') : '<p class="library-empty">Thư viện chưa có sách.</p>'}</div></section><article class="library-reader hidden" id="library-reader"><button class="library-back" type="button">← Về tủ sách</button><div class="paper-book"><div class="paper-page paper-page-left"><span class="page-number"></span><h3></h3><pre></pre></div><div class="paper-page paper-page-right"><span class="page-number"></span><pre></pre></div></div><div class="book-controls"><button type="button" data-page="prev" aria-label="Trang trước">←</button><span class="page-indicator"></span><button type="button" data-page="next" aria-label="Trang sau">→</button></div></article></div></div>`);
+  try {
+    const response = await fetch('/api/books');
+    if (response.ok) {
+      const payload = await response.json();
+      books = Array.isArray(payload.books) ? payload.books : books;
+    }
+  } catch {
+    // Local storage remains available when Neon is not configured.
+  }
+  renderLibrary(books);
   const modal = document.querySelector('.library-modal');
   const close = () => modal?.remove();
   modal.addEventListener('click', event => {
@@ -307,7 +318,8 @@ function updateStats() {
   // Defer so initialization callbacks also run after createGarden returns.
   queueMicrotask(() => {
     const stats = garden.getStats();
-    document.getElementById('nav-garden-count').textContent = stats.gardens || 0;
+    const count = document.getElementById('nav-garden-count');
+    if (count) count.textContent = stats.gardens || 0;
   });
 }
 

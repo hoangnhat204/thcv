@@ -8,6 +8,9 @@
     "dev": "node local-server.mjs",
     "start": "node local-server.mjs"
   },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.2"
+  },
   "engines": {
     "node": ">=18"
   }
