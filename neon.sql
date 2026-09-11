@@ -1,5 +1,12 @@
 -- Neon/PostgreSQL schema for the Rainbow School application.
 -- Run this file once in the Neon SQL Editor.
+CREATE TABLE IF NOT EXISTS book_upload_chunks (
+  upload_id UUID NOT NULL,
+  part INTEGER NOT NULL,
+  content TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (upload_id, part)
+);
 CREATE TABLE IF NOT EXISTS school_directory (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   names JSONB NOT NULL

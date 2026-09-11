@@ -5,16 +5,24 @@ export default async function handler(req, res) {
     const sql = database();
     if ((req.method === 'GET' || req.method === 'HEAD') && req.query?.file) {
       if (!/^[0-9a-f-]{36}$/i.test(req.query.file)) return json(res, 400, { error: 'Mã tệp không hợp lệ.' });
-      const rows = await sql`SELECT file_name, mime_type, content FROM books WHERE id = ${req.query.file}::uuid`;
+      const rows = await sql`SELECT file_name, mime_type, length(content) AS encoded_length, right(content, 2) AS ending FROM books WHERE id = ${req.query.file}::uuid`;
       const book = rows[0];
       if (!book || !/\.pptx?$/i.test(book.file_name)) return json(res, 404, { error: 'Không tìm thấy bài trình chiếu.' });
-      const bytes = Buffer.from(book.content, 'base64');
+      const byteLength = book.encoded_length / 4 * 3 - (book.ending === '==' ? 2 : book.ending.endsWith('=') ? 1 : 0);
       res.setHeader('Content-Type', book.file_name.toLowerCase().endsWith('.pptx') ? 'application/vnd.openxmlformats-officedocument.presentationml.presentation' : 'application/vnd.ms-powerpoint');
       res.setHeader('Content-Disposition', `inline; filename="presentation.${book.file_name.toLowerCase().endsWith('.pptx') ? 'pptx' : 'ppt'}"`);
-      res.setHeader('Content-Length', bytes.length);
+      res.setHeader('Content-Length', byteLength);
       res.setHeader('X-Content-Type-Options', 'nosniff');
       res.status(200);
-      return req.method === 'HEAD' ? res.end() : res.end(bytes);
+      if (req.method === 'HEAD') return res.end();
+      res.flushHeaders?.();
+      for (let offset = 0; offset < book.encoded_length; offset += 1048576) {
+        if (res.destroyed) return;
+        const chunks = await sql`SELECT substring(content FROM ${offset + 1} FOR 1048576) AS content FROM books WHERE id = ${req.query.file}::uuid`;
+        if (!chunks.length) return res.destroy();
+        res.write(Buffer.from(chunks[0].content, 'base64'));
+      }
+      return res.end();
     }
     if (req.method === 'GET') {
       const books = await sql`SELECT id, title, file_name AS "fileName", mime_type AS "mimeType", CASE WHEN (lower(file_name) LIKE '%.ppt' OR lower(file_name) LIKE '%.pptx') THEN '' ELSE content END AS content, uploaded_at AS "uploadedAt" FROM books ORDER BY uploaded_at DESC`;
@@ -41,6 +49,7 @@ export default async function handler(req, res) {
     }
     return json(res, 405, { error: 'Phương thức không được hỗ trợ.' });
   } catch (error) {
+    if (res.headersSent) return res.destroy(error);
     return json(res, 500, { error: error.message });
   }
 }

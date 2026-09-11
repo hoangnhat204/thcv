@@ -3,6 +3,7 @@ import { seedDemoPlants } from './garden.js';
 import { createPlantNotifications } from './plant-notifications.js';
 import { setupSchoolManager } from './school-manager.js';
 import { showAdminPanel } from './admin-panels.js';
+import { uploadPresentation } from './book-upload.js';
 setupSchoolManager();
 
 const STORAGE_KEY = 'hatmam-gardens-v1';
@@ -205,6 +206,13 @@ document.getElementById('book-form').addEventListener('submit', async event => {
   submit.disabled = true;
   try {
     const isPresentation = /\.pptx?$/i.test(file.name);
+    if (isPresentation) {
+      error.textContent = 'Đang tải tệp…';
+      const saved = await uploadPresentation(file, String(form.elements.title.value).trim() || file.name, percent => { error.textContent = percent === 100 ? 'Đang lưu bài trình chiếu…' : `Đang tải ${percent}%…`; });
+      books = [saved, ...readBooks()];
+      try { localStorage.setItem(LIBRARY_KEY, JSON.stringify(books)); } catch {}
+      form.reset(); error.textContent = ''; renderBooks(); return;
+    }
     const isDocx = file.name.toLowerCase().endsWith('.docx') || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
     let content = '';
     let binary = false;
