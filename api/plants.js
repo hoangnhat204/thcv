@@ -2,6 +2,13 @@ import { database, json } from './db.js';
 
 export default async function handler(req, res) {
   try {
+    if (req.method === 'DELETE') {
+      const { roomId, index } = req.body || {};
+      if (typeof roomId !== 'string' || !/^[a-zA-Z0-9_-]{1,80}$/.test(roomId) || !Number.isInteger(index) || index < 0) return json(res, 400, { error: 'Dữ liệu cây không hợp lệ.' });
+      const sql = database();
+      await sql`DELETE FROM plants WHERE room_id = ${roomId} AND plot_index = ${index}`;
+      return json(res, 200, { ok: true });
+    }
     const sql = database();
     if (req.method === 'GET') {
       const rows = await sql`SELECT room_id, plot_index, flower_id, stage, grower_name, grower_school, grower_message, planted_at FROM plants ORDER BY planted_at DESC`;

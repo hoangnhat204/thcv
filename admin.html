@@ -14,7 +14,6 @@
         <div class="admin-mark">✿</div>
         <p class="eyebrow">TRƯỜNG HỌC CẦU VỒNG</p>
         <h1>Trang quản trị</h1>
-        <p class="muted">Đăng nhập để xem dữ liệu các khu vườn.</p>
         <form id="login-form">
           <label>Tên đăng nhập<input name="username" autocomplete="username" required /></label>
           <label>Mật khẩu<input name="password" type="password" autocomplete="current-password" required /></label>
@@ -26,17 +25,28 @@
 
       <section id="dashboard-view" class="dashboard hidden">
         <header class="admin-header">
-          <div><p class="eyebrow">TRƯỜNG HỌC CẦU VỒNG</p><h1>Bảng điều khiển</h1><p class="muted">Theo dõi những hạt mầm đang lớn lên trong trường.</p></div>
-          <div class="header-actions"><a class="admin-home-link" href="./index.html"><span aria-hidden="true">←</span> Về trang chính</a><button id="refresh-button" class="secondary">Làm mới</button><button id="logout-button" class="secondary">Đăng xuất</button></div>
+          <div><p class="eyebrow">TRƯỜNG HỌC CẦU VỒNG</p><h1>Bảng điều khiển</h1></div>
+          <div class="header-actions"><a class="admin-home-link" href="./index.html"><span aria-hidden="true">←</span> Về trang chính</a><button id="notification-button" class="secondary notification-button" aria-label="Thông báo cây mới" aria-haspopup="dialog"><span class="bell-icon" aria-hidden="true">♧</span><span>Thông báo</span><b id="notification-count" hidden>0</b></button><button id="library-button" type="button" class="secondary" aria-haspopup="dialog" aria-controls="library-dialog">Phòng thư viện</button><button id="refresh-button" class="secondary"><span class="refresh-icon" aria-hidden="true">↻</span> <span id="refresh-label">Làm mới</span></button><button id="logout-button" class="secondary">Đăng xuất</button></div>
         </header>
         <div id="summary" class="summary-grid"></div>
-        <section class="panel">
-          <div class="panel-heading"><div><p class="eyebrow">DỮ LIỆU KHU VƯỜN</p><h2>Các cây đã gieo</h2></div><input id="filter-input" placeholder="Tìm tên, trường hoặc lớp..." /></div>
-          <div class="table-wrap"><table><thead><tr><th>Hoa</th><th>Người gieo</th><th>Thông điệp</th><th>Trường</th><th>Lớp</th><th>Trạng thái</th><th>Thời gian</th></tr></thead><tbody id="plants-table"></tbody></table></div>
+        <section class="panel plants-admin-panel">
+          <div class="panel-heading"><div><p class="eyebrow">DỮ LIỆU KHU VƯỜN</p><h2>Các cây đã gieo</h2></div></div>
+          <form id="plant-filters" class="plant-filters">
+            <input id="filter-input" aria-label="Từ khóa" placeholder="Tìm tên, trường hoặc lớp..." />
+            <label>Trường<select id="filter-school"><option value="">Tất cả trường</option></select></label>
+            <label>Ngày gieo<input id="filter-date" type="date" /></label>
+            <div class="filter-actions"><button type="submit" class="secondary">Tìm</button><button type="button" id="export-excel" class="secondary">Xuất Excel</button></div>
+          </form>
+          <div class="table-wrap"><table><thead><tr><th>Hoa</th><th>Người gieo</th><th>Thông điệp</th><th>Trường</th><th>Lớp</th><th>Trạng thái</th><th>Thời gian</th><th>Xóa</th></tr></thead><tbody id="plants-table"></tbody></table></div>
           <p id="empty-state" class="empty hidden">Chưa có dữ liệu phù hợp.</p>
+          <nav class="plant-pagination" aria-label="Phân trang người gieo">
+            <button id="plants-previous" type="button" class="secondary">‹ Trước</button>
+            <span id="plants-page-info" role="status"></span>
+            <button id="plants-next" type="button" class="secondary">Sau ›</button>
+          </nav>
         </section>
-        <section class="panel library-admin-panel">
-          <div class="panel-heading"><div><p class="eyebrow">PHÒNG THƯ VIỆN</p><h2>Thêm sách để học sinh đọc</h2></div></div>
+        <dialog id="library-dialog" class="panel library-admin-panel" aria-labelledby="library-title">
+          <div class="panel-heading"><div><p class="eyebrow">PHÒNG THƯ VIỆN</p><h2 id="library-title">Thêm sách để học sinh đọc</h2></div><button id="library-close" type="button" class="secondary" aria-label="Đóng phòng thư viện">×</button></div>
           <form id="book-form" class="book-form">
             <label>Tên sách<input name="title" maxlength="120" required placeholder="Ví dụ: Câu chuyện cầu vồng" /></label>
             <label>Tệp sách (TXT, MD, CSV, JSON, HTML...)<input name="file" type="file" accept=".txt,.md,.csv,.json,.html,.htm,.xml,.css,.js,.log,text/plain,text/markdown,text/csv,application/json,text/html,application/xml" required /></label>
@@ -44,8 +54,7 @@
             <p id="book-error" class="error" role="alert"></p>
           </form>
           <div id="books-list" class="books-list"></div>
-        </section>
-        <p class="admin-note">Dữ liệu được đọc từ bộ nhớ trình duyệt của website chính.</p>
+        </dialog>
       </section>
     </main>
   </body>

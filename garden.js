@@ -1,3 +1,5 @@
+import { DEFAULT_SCHOOLS } from './school-defaults.js';
+import { getSchools, loadSchools } from './schools.js';
 const FLOWERS = [
   { id: 'daisy', name: 'Cúc họa mi', note: 'Một chút bình yên', color: '#f7f3de', center: '#ddba64', bg: '#f3f0dd' },
   { id: 'sunflower', name: 'Hướng dương', note: 'Luôn hướng về nắng', color: '#e5b448', center: '#84654c', bg: '#f7efd7' },
@@ -12,7 +14,7 @@ for (let index = 7; index <= 50; index += 1) {
   const color = EXTRA_FLOWER_COLORS[(index - 7) % EXTRA_FLOWER_COLORS.length];
   FLOWERS.push({ id: `flower-${index}`, name: EXTRA_FLOWER_NAMES[index - 7], note: `Vẻ đẹp của ${EXTRA_FLOWER_NAMES[index - 7].toLowerCase()}`, color, center: '#d7ae62', bg: '#f1eee3' });
 }
-const SCHOOLS = ['Trường THPT Nguyễn Việt Hồng', 'Trường THPT Hưng Phú', 'Trường THPT Thới Long', 'Trường THPT Lưu Hữu Phước', 'Trường THPT Bùi Hữu Nghĩa', 'Trường THPT Đông Sơn 1 – Thanh Hóa', 'Trường Tiểu học Hưng Lợi 2', 'Trường Cao đẳng Cần Thơ', 'Trường Cao đẳng Y tế Cần Thơ', 'Trường Cao đẳng Nghề Cần Thơ', 'Trường Cao đẳng Kinh tế – Kỹ thuật Cần Thơ', 'Trường Cao đẳng Văn hóa Nghệ thuật Cần Thơ', 'Trường Đại học Kỹ thuật – Công nghệ Cần Thơ', 'Trường Đại học Tây Đô', 'Đại học Cần Thơ', 'Trường Công nghệ Thông tin và Truyền thông – Đại học Cần Thơ', 'Trường Nông nghiệp – Đại học Cần Thơ', 'Trường Bách khoa – Đại học Cần Thơ'];
+const SCHOOLS = DEFAULT_SCHOOLS;
 const UNSAFE_MESSAGE_TERMS = ['địt', 'đụ', 'đéo', 'lồn', 'cặc', 'sex', 'porn', 'rape', 'ấu dâm', 'ấu dam', 'hiếp dâm', 'giết', 'tự sát', 'chết đi', 'phân biệt chủng tộc', 'kỳ thị', 'ki thi', 'bạo lực', 'fuck', 'shit'];
 const STORAGE_KEY = 'hatmam-gardens-v1';
 const PLOTS_PER_BED = 12;
@@ -89,6 +91,7 @@ export function createGarden({ container, onChange = () => {}, onBack = () => {}
           const lastBed = saved.beds?.[id];
           state.beds[id] = Number.isInteger(lastBed) && lastBed >= 0 && lastBed < length / PLOTS_PER_BED ? lastBed : 0;
         });
+        state.deletedDemoIds = Array.isArray(saved.deletedDemoIds) ? saved.deletedDemoIds : [];
         state.unlocked = [...new Set((Array.isArray(saved.unlocked) ? saved.unlocked : []).filter(id => flowerById(id)))];
         Object.values(state.gardens).flat().forEach(plant => {
           if (plant?.stage === 5 && !state.unlocked.includes(plant.flower)) state.unlocked.push(plant.flower);
@@ -100,6 +103,9 @@ export function createGarden({ container, onChange = () => {}, onBack = () => {}
     notify('Chưa đọc được vườn đã lưu. Bạn vẫn có thể trồng hoa trong phiên này.');
   }
   state.profile = { name: '', school: '', message: '' };
+
+  seedDemoPlants(state);
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
 
   function save() {
     try {
@@ -115,7 +121,7 @@ export function createGarden({ container, onChange = () => {}, onBack = () => {}
 
   async function syncRemote() {
     try {
-      const plants = Object.entries(state.gardens).flatMap(([roomId, plots]) => plots.map((plant, index) => plant ? { ...plant, roomId, index } : null).filter(Boolean));
+      const plants = Object.entries(state.gardens).flatMap(([roomId, plots]) => plots.map((plant, index) => plant && !plant.demoId ? { ...plant, roomId, index } : null).filter(Boolean));
       const response = await fetch('/api/plants', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plants }) });
       if (!response.ok) throw new Error('Không thể đồng bộ khu vườn.');
     } catch {
@@ -152,7 +158,7 @@ export function createGarden({ container, onChange = () => {}, onBack = () => {}
       </header>
       <div class="garden-layout">
         <aside class="garden-supply"><div class="garden-supply-title"><span>${icon('sprout', 19)} Túi hạt giống</span></div><p class="garden-supply-intro">Hôm nay, bạn muốn trồng gì?</p>
-          <form class="garden-profile" data-profile-form><label>Họ tên / nickname<input name="name" required maxlength="60" value="${escapeHtml(state.profile.name)}" placeholder="Bạn muốn được gọi là..." /></label><label>Tên trường<select name="school" required><option value="">Chọn trường</option>${SCHOOLS.map(school => `<option ${state.profile.school === school ? 'selected' : ''}>${school}</option>`).join('')}<option ${state.profile.school.startsWith('Khác:') ? 'selected' : ''}>Khác</option></select></label><input class="garden-other-school ${state.profile.school.startsWith('Khác:') ? '' : 'is-hidden'}" name="otherSchool" maxlength="100" value="${escapeHtml(state.profile.school.startsWith('Khác:') ? state.profile.school.slice(6) : '')}" placeholder="Viết tên trường của bạn" ${state.profile.school.startsWith('Khác:') ? 'required' : ''} /><label>Thông điệp <small>(tối đa 100 chữ)</small><textarea name="message" required maxlength="1000" placeholder="Gửi một điều tử tế...">${escapeHtml(state.profile.message)}</textarea></label></form>
+          <form class="garden-profile" data-profile-form><label>Họ tên / nickname<input name="name" required maxlength="60" value="${escapeHtml(state.profile.name)}" placeholder="Bạn muốn được gọi là..." /></label><label>Tên trường<select name="school" required><option value="">Chọn trường</option>${getSchools().map(school => `<option ${state.profile.school === school ? 'selected' : ''}>${escapeHtml(school)}</option>`).join('')}<option ${state.profile.school.startsWith('Khác:') ? 'selected' : ''}>Khác</option></select></label><input class="garden-other-school ${state.profile.school.startsWith('Khác:') ? '' : 'is-hidden'}" name="otherSchool" maxlength="100" value="${escapeHtml(state.profile.school.startsWith('Khác:') ? state.profile.school.slice(6) : '')}" placeholder="Viết tên trường của bạn" ${state.profile.school.startsWith('Khác:') ? 'required' : ''} /><label>Thông điệp <small>(tối đa 100 chữ)</small><textarea name="message" required maxlength="1000" placeholder="Gửi một điều tử tế...">${escapeHtml(state.profile.message)}</textarea></label></form>
           <div class="garden-flower-options">${FLOWERS.map(flower => `<button class="garden-flower-option ${selectedFlower === flower.id && tool === 'plant' ? 'is-selected' : ''}" data-flower="${flower.id}" aria-pressed="${selectedFlower === flower.id && tool === 'plant'}" style="--flower-bg:${flower.bg}"><span class="garden-seed-art">${flowerArt(flower.id, 5)}</span><span>${flower.name}</span>${selectedFlower === flower.id && tool === 'plant' ? `<i>${icon('check', 10)}</i>` : ''}</button>`).join('')}</div>
         </aside>
         <section class="garden-board" aria-label="Luống hoa của ${escapeHtml(room.name)}"><div class="garden-board-top"><span>${icon('leaf', 17)} Góc xanh của bạn · Chạm vào ô đất trống để gieo hạt.</span><span class="garden-unlimited">${icon('infinity', 19)} Không giới hạn luống</span></div>
@@ -292,6 +298,7 @@ export function createGarden({ container, onChange = () => {}, onBack = () => {}
 
   return {
     async loadRemote() {
+      await loadSchools();
       try {
         const response = await fetch('/api/plants');
         if (!response.ok) throw new Error('Không thể tải khu vườn.');
@@ -310,6 +317,7 @@ export function createGarden({ container, onChange = () => {}, onBack = () => {}
           const length = Math.max(PLOTS_PER_BED, Math.ceil(plots.length / PLOTS_PER_BED) * PLOTS_PER_BED);
           state.gardens[roomId] = Array.from({ length }, (_, index) => plots[index] || null);
         });
+        seedDemoPlants(state);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
         Object.entries(state.gardens).forEach(([roomId, plots]) => plots.forEach((plant, index) => scheduleGrowth(roomId, index)));
         onChange();
@@ -337,3 +345,33 @@ export function createGarden({ container, onChange = () => {}, onBack = () => {}
     getStats,
   };
 }
+
+export function seedDemoPlants(state) {
+    Object.values(state.gardens).flat().forEach(plant => {
+      if (plant?.demoId && plant.grower?.name) plant.grower.name = plant.grower.name.replace(/ \(mẫu\)$/u, '');
+    });
+    const nicknames = ['Mây', 'Nắng', 'An', 'Bình', 'Minh', 'Lam', 'Trúc', 'Sen', 'Sao', 'Gió', 'Hạ', 'Thu', 'Đông', 'Xuân', 'Lá', 'Mầm', 'Bông', 'Sóc', 'Thỏ', 'Gấu', 'Én', 'Cá', 'Su', 'Na', 'Bo', 'Mi', 'Bắp', 'Đậu', 'Dâu', 'Táo', 'Cam', 'Chanh', 'Kem', 'Sữa', 'Mít', 'Bơ'];
+    const messages = [
+      'Mỗi bạn LGBT đều xứng đáng được yêu thương và tôn trọng. Cùng nói không với kỳ thị để ai cũng được là chính mình.',
+      'Nói không với bạo lực học đường. Đừng hùa theo lời trêu chọc; hãy đồng hành cùng bạn bị bắt nạt và tìm sự giúp đỡ từ thầy cô.',
+      'Xu hướng tính dục và bản dạng giới không quyết định giá trị của một người. Hãy lắng nghe, tôn trọng và bảo vệ bạn LGBT khỏi kỳ thị.',
+      'Một lớp học an toàn bắt đầu từ lời nói tử tế. Không đánh bạn, không cô lập, không chia sẻ hình ảnh làm tổn thương người khác.',
+      'Cầu vồng đẹp vì có nhiều sắc màu. Mong mọi bạn LGBT được học tập, kết bạn và theo đuổi ước mơ trong sự bình đẳng.',
+      'Khi thấy bạo lực học đường, hãy báo cho người lớn đáng tin cậy. Bạn bị bắt nạt cần được bảo vệ và không phải chịu đựng một mình.',
+    ];
+    const existing = new Set(Object.values(state.gardens).flat().filter(Boolean).map(plant => plant.demoId));
+    SCHOOLS.forEach((school, schoolIndex) => {
+      for (let person = 0; person < 2; person += 1) {
+        const index = schoolIndex * 2 + person;
+        const demoId = `school-${schoolIndex + 1}-person-${person + 1}`;
+        if (existing.has(demoId) || state.deletedDemoIds?.includes(demoId)) continue;
+        const roomId = schoolIndex < 6 ? `high-${(schoolIndex + person) % 3 + 1}` : schoolIndex === 6 ? `primary-${person + 4}` : schoolIndex < 12 ? 'college-1' : 'university-1';
+        const plots = state.gardens[roomId] ||= Array(PLOTS_PER_BED).fill(null);
+        let slot = plots.findIndex(plant => !plant);
+        if (slot === -1) { slot = plots.length; plots.push(...Array(PLOTS_PER_BED).fill(null)); }
+        const flower = FLOWERS[index % FLOWERS.length].id;
+        plots[slot] = { demoId, flower, stage: 5, plantedAt: Date.UTC(2026, 8, 10, 1, index * 7), grower: { name: nicknames[index], school, message: messages[(schoolIndex % 3) * 2 + person] } };
+        if (!state.unlocked.includes(flower)) state.unlocked.push(flower);
+      }
+    });
+  }
