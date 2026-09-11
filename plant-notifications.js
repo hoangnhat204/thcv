@@ -1,3 +1,4 @@
+import { showAdminPanel } from './admin-panels.js';
 const KEY = 'thcv-plant-notifications-v1';
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 export const plantKey = plant => JSON.stringify([plant.demoId || '', plant.roomId, plant.index, plant.plantedAt]);
@@ -38,7 +39,7 @@ export function createPlantNotifications() {
   }
   button.addEventListener('click', () => {
     if (dialog.open) { dialog.close(); return; }
-    render(); positionPanel(); dialog.show();
+    render(); positionPanel(); showAdminPanel(dialog);
     button.setAttribute('aria-expanded', 'true');
   });
   dialog.addEventListener('close', () => { button.setAttribute('aria-expanded', 'false'); });

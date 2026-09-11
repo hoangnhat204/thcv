@@ -1,4 +1,5 @@
 import { loadSchools, saveSchools } from './schools.js';
+import { showAdminPanel } from './admin-panels.js';
 const escape = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 export function setupSchoolManager() {
   const button = document.createElement('button');
@@ -28,7 +29,7 @@ export function setupSchoolManager() {
   }
   button.addEventListener('click', async () => {
     if (dialog.open) { dialog.close(); return; }
-    reset(); error.textContent = ''; positionPanel(); dialog.show();
+    reset(); error.textContent = ''; positionPanel(); showAdminPanel(dialog);
     button.setAttribute('aria-expanded', 'true');
     busy = true; dialog.querySelectorAll('button,input').forEach(el => el.disabled = true);
     const result = await loadSchools(); names = result.schools;

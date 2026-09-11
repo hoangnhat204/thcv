@@ -104,6 +104,8 @@ async function showLibrary() {
     if (event.target === modal || event.target.closest('.library-close')) close();
     const back = event.target.closest('.library-back');
     if (back) {
+      modal.querySelector('.library-presentation')?.remove();
+      modal.querySelector('.library-reader').classList.remove('is-presentation');
       modal.querySelector('.library-reader').classList.add('hidden');
       modal.querySelector('.library-shelf-view').classList.remove('hidden');
       return;
@@ -113,6 +115,38 @@ async function showLibrary() {
       const book = books.find(item => item.id === bookButton.dataset.bookId);
       if (!book) return;
       const reader = modal.querySelector('#library-reader');
+      reader.querySelector('.library-presentation')?.remove();
+      reader.classList.remove('is-presentation');
+      if (/\.pptx?$/i.test(book.fileName || '')) {
+        reader.classList.add('is-presentation');
+        const presentation = document.createElement('section');
+        presentation.className = 'library-presentation';
+        const title = document.createElement('h3');
+        title.textContent = book.title;
+        presentation.append(title);
+        const fileUrl = new URL(`/api/books?file=${encodeURIComponent(book.id)}`, location.origin).href;
+        const isPublic = location.protocol === 'https:' && !['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+        if (isPublic) {
+          const frame = document.createElement('iframe');
+          frame.src = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`;
+          frame.title = `Trình chiếu: ${book.title}`;
+          frame.allowFullscreen = true;
+          presentation.append(frame);
+        }
+        const hint = document.createElement('p');
+        hint.textContent = isPublic ? 'Dùng mũi tên trong khung để chuyển slide. Nếu chưa xem được, hãy tải tệp để mở bằng PowerPoint.' : 'Xem slide trực tuyến khả dụng khi website chạy trên địa chỉ HTTPS công khai. Bạn có thể tải tệp để mở bằng PowerPoint.';
+        presentation.append(hint);
+        const download = document.createElement('a');
+        download.href = fileUrl;
+        download.download = book.fileName;
+        download.textContent = 'Tải PowerPoint';
+        presentation.append(download);
+        reader.append(presentation);
+        modal.querySelector('.library-shelf-view').classList.add('hidden');
+        reader.classList.remove('hidden');
+        modal.querySelector('.library-card').scrollTop = 0;
+        return;
+      }
       const pages = [];
       const isUnreadableBinary = book.binary || /[\u0000\uFFFD]/.test(String(book.content || '')) || String(book.content || '').startsWith('PK');
       const text = isUnreadableBinary
@@ -122,9 +156,19 @@ async function showLibrary() {
       reader.dataset.page = '0';
       reader.dataset.pages = JSON.stringify(pages);
       reader.querySelector('h3').textContent = book.title;
+      let continuous = reader.querySelector('.library-continuous');
+      if (!continuous) {
+        continuous = document.createElement('section');
+        continuous.className = 'library-continuous';
+        continuous.append(document.createElement('h3'), document.createElement('pre'));
+        reader.querySelector('.paper-book').before(continuous);
+      }
+      continuous.querySelector('h3').textContent = book.title;
+      continuous.querySelector('pre').textContent = text;
       renderLibraryPage(reader, pages, 0);
       modal.querySelector('.library-shelf-view').classList.add('hidden');
       reader.classList.remove('hidden');
+      modal.querySelector('.library-card').scrollTop = 0;
       return;
     }
     const pageButton = event.target.closest('[data-page]');

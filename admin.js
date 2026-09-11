@@ -2,6 +2,7 @@ import { createWorkbook } from './excel.js';
 import { seedDemoPlants } from './garden.js';
 import { createPlantNotifications } from './plant-notifications.js';
 import { setupSchoolManager } from './school-manager.js';
+import { showAdminPanel } from './admin-panels.js';
 setupSchoolManager();
 
 const STORAGE_KEY = 'hatmam-gardens-v1';
@@ -144,7 +145,7 @@ function positionLibrary() {
 libraryButton.addEventListener('click', () => {
   if (libraryDialog.open) { libraryDialog.close(); return; }
   positionLibrary();
-  libraryDialog.show();
+  showAdminPanel(libraryDialog);
   libraryButton.setAttribute('aria-expanded', 'true');
   renderBooks();
 });
@@ -200,7 +201,10 @@ document.getElementById('book-form').addEventListener('submit', async event => {
   const file = form.elements.file.files[0];
   const error = document.getElementById('book-error');
   if (!file) return;
+  const submit = form.querySelector('[type="submit"]') || form.querySelector('button');
+  submit.disabled = true;
   try {
+    const isPresentation = /\.pptx?$/i.test(file.name);
     const isDocx = file.name.toLowerCase().endsWith('.docx') || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
     let content = '';
     let binary = false;
@@ -208,7 +212,12 @@ document.getElementById('book-form').addEventListener('submit', async event => {
       error.textContent = 'Vui lòng chọn tệp văn bản như .txt, .md, .csv hoặc .json để mở sách không lỗi.';
       return;
     }
-    content = await file.text();
+    if (isPresentation) {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      let raw = '';
+      for (let offset = 0; offset < bytes.length; offset += 8192) raw += String.fromCharCode(...bytes.subarray(offset, offset + 8192));
+      content = btoa(raw);
+    } else content = await file.text();
     binary = content.startsWith('PK') || content.includes('\u0000') || content.includes('\uFFFD');
     if (binary) {
       error.textContent = 'Tệp này không phải văn bản có thể đọc trực tiếp. Hãy chọn .txt, .md, .csv hoặc .json.';
@@ -217,21 +226,21 @@ document.getElementById('book-form').addEventListener('submit', async event => {
     const newBook = {
       title: String(form.elements.title.value).trim() || file.name,
       fileName: file.name,
-      mimeType: file.type,
+      mimeType: isPresentation ? (file.name.toLowerCase().endsWith('.pptx') ? 'application/vnd.openxmlformats-officedocument.presentationml.presentation' : 'application/vnd.ms-powerpoint') : file.type,
       binary,
       content,
       uploadedAt: Date.now(),
     };
     const response = await fetch('/api/books', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newBook) });
-    if (!response.ok) throw new Error('Không thể lưu sách vào Neon.');
+    if (!response.ok) { const payload = await response.json().catch(() => ({})); throw new Error(payload.error || 'Không thể lưu tệp trên máy chủ.'); }
     books = [((await response.json()).book), ...readBooks()];
-    localStorage.setItem(LIBRARY_KEY, JSON.stringify(books));
+    try { localStorage.setItem(LIBRARY_KEY, JSON.stringify(books)); } catch {}
     form.reset();
     error.textContent = '';
     renderBooks();
-  } catch {
-    error.textContent = 'Không thể lưu tệp. Bộ nhớ trình duyệt có thể đã đầy.';
-  }
+  } catch (reason) {
+    error.textContent = reason.message || 'Không thể lưu tệp. Vui lòng thử lại.';
+  } finally { submit.disabled = false; }
 });
 document.addEventListener('click', event => {
   const button = event.target.closest('[data-delete-book]');

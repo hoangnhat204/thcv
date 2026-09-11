@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Quản trị — Trường học Cầu Vồng</title>
     <link rel="icon" type="image/svg+xml" href="./rainbow.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Lora:wght@400;500;600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./admin.css" />
     <script type="module" src="./admin.js"></script>
   </head>
@@ -49,7 +52,7 @@
           <div class="panel-heading"><div><p class="eyebrow">PHÒNG THƯ VIỆN</p><h2 id="library-title">Thêm sách để học sinh đọc</h2></div><button id="library-close" type="button" class="secondary" aria-label="Đóng phòng thư viện">×</button></div>
           <form id="book-form" class="book-form">
             <label>Tên sách<input name="title" maxlength="120" required placeholder="Ví dụ: Câu chuyện cầu vồng" /></label>
-            <label>Tệp sách (TXT, MD, CSV, JSON, HTML...)<input name="file" type="file" accept=".txt,.md,.csv,.json,.html,.htm,.xml,.css,.js,.log,text/plain,text/markdown,text/csv,application/json,text/html,application/xml" required /></label>
+            <label>Tệp sách (PPT, PPTX, TXT, MD, CSV, JSON, HTML...)<input name="file" type="file" accept=".ppt,.pptx,.txt,.md,.csv,.json,.html,.htm,.xml,.css,.js,.log,text/plain,text/markdown,text/csv,application/json,text/html,application/xml" required /></label>
             <button type="submit">Tải sách lên</button>
             <p id="book-error" class="error" role="alert"></p>
           </form>
